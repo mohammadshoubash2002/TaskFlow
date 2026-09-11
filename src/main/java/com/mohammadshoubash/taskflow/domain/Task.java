@@ -3,6 +3,8 @@ package com.mohammadshoubash.taskflow.domain;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.mohammadshoubash.taskflow.exception.InvalidTaskStateException;
+
 public class Task {
     private int id;
     private String title;
@@ -109,6 +111,9 @@ public class Task {
     }
 
     public void markAsOverdue() {
+        if (this.status == Status.DONE) {
+            throw new InvalidTaskStateException(this.id, this.status.toString(), Status.OVERDUE.toString());
+        }
         this.status = Status.OVERDUE;
         this.updatedAt = LocalDateTime.now();
     }
