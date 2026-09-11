@@ -8,15 +8,25 @@ public class Reminder {
     private LocalDateTime remindAt;
     private boolean isSent;
     private LocalDateTime sentAt;
+
+    public enum DeliveryChannel {
+        EMAIL,
+        SMS,
+        PUSH
+    }
+
+    private DeliveryChannel channel;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public Reminder(int id, Task task, LocalDateTime remindAt) {
+    public Reminder(int id, Task task, LocalDateTime remindAt, DeliveryChannel channel) {
         this.id = id;
         this.task = task;
         this.remindAt = remindAt;
         this.isSent = false;
         this.sentAt = null;
+        this.channel = channel;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -79,6 +89,15 @@ public class Reminder {
     public boolean isOverdue() {
         // i add this.remindAt != null to prevent the NullPointerException
         return this.remindAt != null && this.remindAt.isBefore(LocalDateTime.now());
+    }
+
+    public DeliveryChannel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(DeliveryChannel channel) {
+        this.channel = channel;
+        this.updatedAt = LocalDateTime.now();
     }
 
     @Override
