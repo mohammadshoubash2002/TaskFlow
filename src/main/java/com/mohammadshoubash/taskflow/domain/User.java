@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.mohammadshoubash.taskflow.exception.InvalidEmailException;
+import com.mohammadshoubash.taskflow.util.Validator;
+
 public class User {
     private int id;
     private String name;
@@ -14,6 +17,9 @@ public class User {
     private LocalDateTime updatedAt;
 
     public User(int id, String name, String email) {
+        if (!Validator.isValidEmail(email)) {
+            throw new InvalidEmailException(email);
+        }
         this.id = id;
         this.name = name;
         this.email = email;
@@ -50,6 +56,9 @@ public class User {
     }
 
     public void setEmail(String email) {
+        if (!Validator.isValidEmail(email)) {
+            throw new InvalidEmailException(email);
+        }
         this.email = email;
         this.updatedAt = LocalDateTime.now();
     }
