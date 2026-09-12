@@ -4,6 +4,7 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import com.mohammadshoubash.taskflow.config.ConnectionManager;
+import com.mohammadshoubash.taskflow.domain.Reminder.DeliveryChannel;
 import com.mohammadshoubash.taskflow.domain.User;
 
 public class UserRepositoryJdbc implements UserRepository {
@@ -12,9 +13,11 @@ public class UserRepositoryJdbc implements UserRepository {
         int id = rs.getInt("id");
         String name = rs.getString("name");
         String email = rs.getString("email");
+        String channelStr = rs.getString("preferred_channel");
+        DeliveryChannel preferredChannel = (channelStr != null) ? DeliveryChannel.valueOf(channelStr) : null;
         LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
         LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
-        return new User(id, name, email, createdAt, updatedAt);
+        return new User(id, name, email, preferredChannel, createdAt, updatedAt);
     }
 
     @Override
@@ -27,19 +30,24 @@ public class UserRepositoryJdbc implements UserRepository {
     }
 
     private User insert(User user) {
-        String sql = "INSERT INTO users (name, email, created_at, updated_at) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO users (name, email, preferred_channel, created_at, updated_at) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, user.getName());
             ps.setString(2, user.getEmail());
-            ps.setTimestamp(3, Timestamp.valueOf(user.getCreatedAt()));
-            ps.setTimestamp(4, Timestamp.valueOf(user.getUpdatedAt()));
+            if (user.getPreferredChannel() != null) {
+                ps.setString(3, user.getPreferredChannel().name());
+            } else {
+                ps.setNull(3, Types.VARCHAR);
+            }
+            ps.setTimestamp(4, Timestamp.valueOf(user.getCreatedAt()));
+            ps.setTimestamp(5, Timestamp.valueOf(user.getUpdatedAt()));
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
                     int generatedId = keys.getInt(1);
-                    return new User(generatedId, user.getName(), user.getEmail(), user.getCreatedAt(), user.getUpdatedAt());
+                    return new User(generatedId, user.getName(), user.getEmail(), user.getPreferredChannel(), user.getCreatedAt(), user.getUpdatedAt());
                 }
             }
             return user;
@@ -49,13 +57,18 @@ public class UserRepositoryJdbc implements UserRepository {
     }
 
     private User update(User user) {
-        String sql = "UPDATE users SET name = ?, email = ?, updated_at = ? WHERE id = ?";
+        String sql = "UPDATE users SET name = ?, email = ?, preferred_channel = ?, updated_at = ? WHERE id = ?";
         try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, user.getName());
             ps.setString(2, user.getEmail());
-            ps.setTimestamp(3, Timestamp.valueOf(user.getUpdatedAt()));
-            ps.setInt(4, user.getId());
+            if (user.getPreferredChannel() != null) {
+                ps.setString(3, user.getPreferredChannel().name());
+            } else {
+                ps.setNull(3, Types.VARCHAR);
+            }
+            ps.setTimestamp(4, Timestamp.valueOf(user.getUpdatedAt()));
+            ps.setInt(5, user.getId());
             ps.executeUpdate();
             return user;
         } catch (SQLException e) {
