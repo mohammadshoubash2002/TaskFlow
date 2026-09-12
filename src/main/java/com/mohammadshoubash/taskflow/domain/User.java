@@ -17,6 +17,10 @@ public class User {
     private LocalDateTime updatedAt;
 
     public User(int id, String name, String email) {
+        this(id, name, email, LocalDateTime.now(), LocalDateTime.now());
+    }
+
+    public User(int id, String name, String email, LocalDateTime createdAt, LocalDateTime updatedAt) {
         if (!Validator.isValidEmail(email)) {
             throw new InvalidEmailException(email);
         }
@@ -24,8 +28,8 @@ public class User {
         this.name = name;
         this.email = email;
         this.tasks = new ArrayList<>();
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public void addTask(Task task) {

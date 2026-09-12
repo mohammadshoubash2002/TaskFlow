@@ -2,6 +2,8 @@ package com.mohammadshoubash.taskflow.domain;
 
 import java.time.LocalDateTime;
 
+import com.mohammadshoubash.taskflow.domain.Reminder.DeliveryChannel;
+
 public class Reminder {
     private int id;
     private Task task;
@@ -21,14 +23,20 @@ public class Reminder {
     private LocalDateTime updatedAt;
 
     public Reminder(int id, Task task, LocalDateTime remindAt, DeliveryChannel channel) {
+        this(id, task, remindAt, channel, false, null, LocalDateTime.now(), LocalDateTime.now());
+    }
+
+    public Reminder(int id, Task task, LocalDateTime remindAt, DeliveryChannel channel, 
+                    boolean isSent, LocalDateTime sentAt, 
+                    LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.task = task;
         this.remindAt = remindAt;
-        this.isSent = false;
-        this.sentAt = null;
         this.channel = channel;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.isSent = isSent;
+        this.sentAt = sentAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public int getId() {

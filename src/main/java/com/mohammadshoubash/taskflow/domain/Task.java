@@ -3,6 +3,7 @@ package com.mohammadshoubash.taskflow.domain;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.mohammadshoubash.taskflow.domain.Task.Priority;
 import com.mohammadshoubash.taskflow.exception.InvalidTaskStateException;
 
 public class Task {
@@ -32,15 +33,21 @@ public class Task {
     private Priority priority;
 
     public Task(int id, String title, String description, LocalDate dueDate, Priority priority, User assignedUser) {
+        this(id, title, description, dueDate, Status.TODO, priority, assignedUser, LocalDateTime.now(), LocalDateTime.now());
+    }
+
+    public Task(int id, String title, String description, LocalDate dueDate, 
+                Status status, Priority priority, User assignedUser, 
+                LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = (title != null) ? title : "";
         this.description = (description != null) ? description : "";
         this.dueDate = dueDate;
+        this.status = (status != null) ? status : Status.TODO;
         this.priority = priority;
         this.assignedUser = assignedUser;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        this.status = Status.TODO;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public int getId() {
