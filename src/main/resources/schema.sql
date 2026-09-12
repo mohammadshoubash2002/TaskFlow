@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     assigned_user_id INT,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
     CONSTRAINT fk_tasks_user FOREIGN KEY (assigned_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 

@@ -41,8 +41,10 @@ public class TaskRepositoryJdbc implements TaskRepository {
 
         LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
         LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
+        Timestamp completedAtTs = rs.getTimestamp("completed_at");
+        LocalDateTime completedAt = (completedAtTs != null) ? completedAtTs.toLocalDateTime() : null;
 
-        return new Task(id, title, description, dueDate, status, priority, assignedUser, createdAt, updatedAt);
+        return new Task(id, title, description, dueDate, status, priority, assignedUser, completedAt, createdAt, updatedAt);
     }
 
     @Override
@@ -55,8 +57,8 @@ public class TaskRepositoryJdbc implements TaskRepository {
     }
 
     private Task insert(Task task) {
-        String sql = "INSERT INTO tasks (title, description, due_date, status, priority, assigned_user_id, created_at, updated_at) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO tasks (title, description, due_date, status, priority, assigned_user_id, created_at, updated_at, completed_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, task.getTitle());
@@ -75,6 +77,11 @@ public class TaskRepositoryJdbc implements TaskRepository {
             }
             ps.setTimestamp(7, Timestamp.valueOf(task.getCreatedAt()));
             ps.setTimestamp(8, Timestamp.valueOf(task.getUpdatedAt()));
+            if (task.getCompletedAt() != null) {
+                ps.setTimestamp(9, Timestamp.valueOf(task.getCompletedAt()));
+            } else {
+                ps.setNull(9, Types.TIMESTAMP);
+            }
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -82,7 +89,7 @@ public class TaskRepositoryJdbc implements TaskRepository {
                     int generatedId = keys.getInt(1);
                     return new Task(generatedId, task.getTitle(), task.getDescription(), task.getDueDate(),
                             task.getStatus(), task.getPriority(), task.getAssignedUser(),
-                            task.getCreatedAt(), task.getUpdatedAt());
+                            task.getCompletedAt(), task.getCreatedAt(), task.getUpdatedAt());
                 }
             }
             return task;
@@ -93,7 +100,7 @@ public class TaskRepositoryJdbc implements TaskRepository {
 
     private Task update(Task task) {
         String sql = "UPDATE tasks SET title = ?, description = ?, due_date = ?, status = ?, priority = ?, " +
-                     "assigned_user_id = ?, updated_at = ? WHERE id = ?";
+                     "assigned_user_id = ?, updated_at = ?, completed_at = ? WHERE id = ?";
         try (Connection conn = ConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, task.getTitle());
@@ -111,7 +118,12 @@ public class TaskRepositoryJdbc implements TaskRepository {
                 ps.setNull(6, Types.INTEGER);
             }
             ps.setTimestamp(7, Timestamp.valueOf(task.getUpdatedAt()));
-            ps.setInt(8, task.getId());
+            if (task.getCompletedAt() != null) {
+                ps.setTimestamp(8, Timestamp.valueOf(task.getCompletedAt()));
+            } else {
+                ps.setNull(8, Types.TIMESTAMP);
+            }
+            ps.setInt(9, task.getId());
             ps.executeUpdate();
             return task;
         } catch (SQLException e) {

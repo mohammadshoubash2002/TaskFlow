@@ -12,6 +12,7 @@ public class Task {
     private String description;
     private LocalDate dueDate;
     private User assignedUser;
+    private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -33,12 +34,19 @@ public class Task {
     private Priority priority;
 
     public Task(int id, String title, String description, LocalDate dueDate, Priority priority, User assignedUser) {
-        this(id, title, description, dueDate, Status.TODO, priority, assignedUser, LocalDateTime.now(), LocalDateTime.now());
+        this(id, title, description, dueDate, Status.TODO, priority, assignedUser, null, LocalDateTime.now(), LocalDateTime.now());
     }
 
     public Task(int id, String title, String description, LocalDate dueDate, 
                 Status status, Priority priority, User assignedUser, 
                 LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, title, description, dueDate, status, priority, assignedUser, 
+            null, createdAt, updatedAt);
+    }
+
+    public Task(int id, String title, String description, LocalDate dueDate, 
+                Status status, Priority priority, User assignedUser, 
+                LocalDateTime completedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = (title != null) ? title : "";
         this.description = (description != null) ? description : "";
@@ -46,6 +54,7 @@ public class Task {
         this.status = (status != null) ? status : Status.TODO;
         this.priority = priority;
         this.assignedUser = assignedUser;
+        this.completedAt = completedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -104,16 +113,19 @@ public class Task {
 
     public void markAsDone() {
         this.status = Status.DONE;
+        this.completedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
     public void markAsInProgress() {
         this.status = Status.IN_PROGRESS;
+        this.completedAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void markAsTodo() {
         this.status = Status.TODO;
+        this.completedAt = null;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -175,6 +187,23 @@ public class Task {
         return this.id == task.id;
     }
 
+    public LocalDateTime getCompletedAt() {
+        if (this.completedAt != null) {
+            return this.completedAt;
+        }
+
+        if (this.status == Status.DONE) {
+            return this.updatedAt;
+        }
+
+        return null;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @Override
     public int hashCode() {
         return Integer.hashCode(id);
@@ -189,6 +218,7 @@ public class Task {
                     ", dueDate=" + dueDate +
                     ", createdAt=" + createdAt +
                     ", updatedAt=" + updatedAt +
+                    ", completedAt=" + completedAt +
                     ", priority=" + priority +
                     ", status=" + status +
                     ", assignedUserName=" + (assignedUser != null ? assignedUser.getName() : "None") +
