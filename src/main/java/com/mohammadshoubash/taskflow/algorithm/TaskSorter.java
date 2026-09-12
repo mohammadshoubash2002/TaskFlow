@@ -6,6 +6,11 @@ import java.util.List;
 import com.mohammadshoubash.taskflow.domain.Task;
 
 public class TaskSorter {
+    // Merge sort is used because it is an efficient and stable sorting algorithm.
+    // It has a time complexity of O(n log n) and a space complexity of O(n).
+    // Stability is important because it preserves the relative order of tasks
+    // that have the same due date and priority.
+
     public List<Task> sortTasksByDueDate(List<Task> tasks) {
         if (tasks == null || tasks.size() <= 1) {
             return tasks == null ? new ArrayList<>() : new ArrayList<>(tasks);
