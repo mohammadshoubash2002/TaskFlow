@@ -2,23 +2,45 @@ package com.mohammadshoubash.taskflow;
 
 import org.h2.tools.Server;
 
-import com.mohammadshoubash.taskflow.cache.DueTodayCache;
+import com.mohammadshoubash.taskflow.cli.TaskFlowCli;
 import com.mohammadshoubash.taskflow.config.ConnectionManager;
+import com.mohammadshoubash.taskflow.event.EventBus;
+import com.mohammadshoubash.taskflow.event.TaskLoggingListener;
+import com.mohammadshoubash.taskflow.event.TaskReminderListener;
+import com.mohammadshoubash.taskflow.event.TaskStatsListener;
 import com.mohammadshoubash.taskflow.repository.TaskRepository;
 import com.mohammadshoubash.taskflow.repository.TaskRepositoryJdbc;
+import com.mohammadshoubash.taskflow.repository.UserRepository;
+import com.mohammadshoubash.taskflow.repository.UserRepositoryJdbc;
+import com.mohammadshoubash.taskflow.service.ReportingService;
+import com.mohammadshoubash.taskflow.service.TaskService;
+import com.mohammadshoubash.taskflow.service.UserService;
 
 public class App {
     public static void main(String[] args) throws Exception {
         ConnectionManager.initializeDatabase();
         
         Server webServer = Server.createWebServer("-webPort", "8082", "-tcpAllowOthers").start();
-        
-        System.out.println("H2 Web Console running at: http://localhost:8082");
-        
-        // TaskRepository taskRepo = new TaskRepositoryJdbc();
-        // DueTodayCache dueTodayCache = new DueTodayCache();
-        // dueTodayCache.getDueToday(taskRepo.findAll());
+        System.out.println("H2 Web Console running at: http://localhost:8082\n");
 
-        Thread.currentThread().join();
+        // Event-driven pub/sub wiring
+        EventBus eventBus = new EventBus();
+        eventBus.subscribe(new TaskLoggingListener());
+        eventBus.subscribe(new TaskReminderListener());
+        eventBus.subscribe(new TaskStatsListener());
+
+        // Infrastructure & Services (Model layer)
+        TaskRepository taskRepository = new TaskRepositoryJdbc();
+        UserRepository userRepository = new UserRepositoryJdbc();
+
+        TaskService taskService = new TaskService(taskRepository, eventBus);
+        UserService userService = new UserService(userRepository);
+        ReportingService reportingService = new ReportingService();
+
+        // CLI Controller
+        TaskFlowCli cli = new TaskFlowCli(taskService, userService, reportingService);
+        cli.start();
+
+        webServer.stop();
     }
 }
