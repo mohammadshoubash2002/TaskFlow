@@ -13,7 +13,8 @@ public class Reminder {
 
     public enum DeliveryChannel {
         EMAIL,
-        SMS
+        SMS,
+        PUSH
     }
 
     private DeliveryChannel channel;

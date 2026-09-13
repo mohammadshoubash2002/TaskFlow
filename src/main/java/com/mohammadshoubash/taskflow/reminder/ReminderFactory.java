@@ -11,9 +11,14 @@ public class ReminderFactory {
                 ? user.getPreferredChannel()
                 : defaultChannelFor(task != null ? task.getPriority() : null);
 
+        if (channel == null) {
+            return new EmailDelivery();
+        }
+
         return switch (channel) {
             case EMAIL -> new EmailDelivery();
             case SMS -> new SmsDelivery();
+            case PUSH -> new PushDelivery();
             default -> new EmailDelivery();
         };
     }
