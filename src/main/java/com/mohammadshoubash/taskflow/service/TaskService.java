@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.mohammadshoubash.taskflow.cache.DueTodayCache;
 import com.mohammadshoubash.taskflow.domain.Reminder;
 import com.mohammadshoubash.taskflow.domain.Reminder.DeliveryChannel;
 import com.mohammadshoubash.taskflow.domain.Task;
@@ -22,30 +23,34 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final EventBus eventBus;
-    private final ReportService reportService;
+    private final ReportingService reportingService;
     private final ReminderRepository reminderRepository;
+    private final DueTodayCache dueTodayCache;
 
     public TaskService(TaskRepository taskRepository) {
-        this(taskRepository, new EventBus(), new ReportService(taskRepository), new ReminderRepositoryJdbc(taskRepository));
+        this(taskRepository, new EventBus(), new ReportingService(), new ReminderRepositoryJdbc(taskRepository), new DueTodayCache());
     }
 
     public TaskService(TaskRepository taskRepository, EventBus eventBus) {
-        this(taskRepository, eventBus, new ReportService(taskRepository), new ReminderRepositoryJdbc(taskRepository));
+        this(taskRepository, eventBus, new ReportingService(), new ReminderRepositoryJdbc(taskRepository), new DueTodayCache());
     }
 
-    public TaskService(TaskRepository taskRepository, EventBus eventBus, ReportService reportService) {
-        this(taskRepository, eventBus, reportService, new ReminderRepositoryJdbc(taskRepository));
+    public TaskService(TaskRepository taskRepository, EventBus eventBus, ReportingService reportingService) {
+        this(taskRepository, eventBus, reportingService, new ReminderRepositoryJdbc(taskRepository), new DueTodayCache());
     }
 
-    public TaskService(TaskRepository taskRepository, EventBus eventBus, ReportService reportService, ReminderRepository reminderRepository) {
+    public TaskService(TaskRepository taskRepository, EventBus eventBus, ReportingService reportingService,
+                       ReminderRepository reminderRepository, DueTodayCache dueTodayCache) {
         this.taskRepository = taskRepository;
         this.eventBus = (eventBus != null) ? eventBus : new EventBus();
-        this.reportService = (reportService != null) ? reportService : new ReportService(this.taskRepository);
+        this.reportingService = (reportingService != null) ? reportingService : new ReportingService();
         this.reminderRepository = (reminderRepository != null) ? reminderRepository : new ReminderRepositoryJdbc(this.taskRepository);
+        this.dueTodayCache = (dueTodayCache != null) ? dueTodayCache : new DueTodayCache();
     }
 
     public Task createTask(Task task) {
         Task saved = taskRepository.save(task);
+        dueTodayCache.invalidate();
         eventBus.publish(new TaskCreated(saved));
         return saved;
     }
@@ -59,6 +64,7 @@ public class TaskService {
         Task task = optionalTask.get();
         task.markAsDone();
         Task updated = taskRepository.save(task);
+        dueTodayCache.invalidate();
         eventBus.publish(new TaskCompleted(updated));
         return Optional.of(updated);
     }
@@ -76,7 +82,31 @@ public class TaskService {
             }
         }
 
+        if (!overdueTasks.isEmpty()) {
+            dueTodayCache.invalidate();
+        }
+
         return overdueTasks;
+    }
+
+    /**
+     * Retrieves tasks due today using in-memory caching.
+     * Backed by generic Cache abstraction to avoid redundant DB queries.
+     */
+    public List<Task> getTasksDueToday() {
+        return dueTodayCache.getDueToday(taskRepository.findAll());
+    }
+
+    public boolean isDueTodayCached() {
+        return dueTodayCache.isCached();
+    }
+
+    public void invalidateDueTodayCache() {
+        dueTodayCache.invalidate();
+    }
+
+    public DueTodayCache getDueTodayCache() {
+        return dueTodayCache;
     }
 
     public List<Task> getAllTasks() {
@@ -96,11 +126,17 @@ public class TaskService {
     }
 
     public Task updateTask(Task task) {
-        return taskRepository.save(task);
+        Task updated = taskRepository.save(task);
+        dueTodayCache.invalidate();
+        return updated;
     }
 
     public boolean deleteTask(int taskId) {
-        return taskRepository.deleteById(taskId);
+        boolean deleted = taskRepository.deleteById(taskId);
+        if (deleted) {
+            dueTodayCache.invalidate();
+        }
+        return deleted;
     }
 
     public List<Task> getDueSoonReport() {
@@ -108,7 +144,7 @@ public class TaskService {
     }
 
     public List<Task> getDueSoonReport(int daysAhead) {
-        return reportService.getDueSoonReport(daysAhead);
+        return reportingService.getDueSoonReport(taskRepository.findAll(), daysAhead);
     }
 
     public TaskRepository getTaskRepository() {
@@ -126,6 +162,7 @@ public class TaskService {
      * Rescheduling invalidates all previous pending reminders for this task.
      * Any unsent reminders are canceled/deleted, and fresh reminders aligned with the
      * new due date are scheduled.
+     * Also invalidates the in-memory DueTodayCache.
      *
      * @param taskId the ID of the task to reschedule
      * @param newDueDate the new deadline
@@ -140,6 +177,7 @@ public class TaskService {
         Task task = optionalTask.get();
         task.reschedule(newDueDate);
         Task updated = taskRepository.save(task);
+        dueTodayCache.invalidate();
 
         // Cancel all pending reminders in the repository for this task
         List<Reminder> existingReminders = reminderRepository.findByTaskId(taskId);
@@ -167,7 +205,7 @@ public class TaskService {
         return reminderRepository;
     }
 
-    public ReportService getReportService() {
-        return reportService;
+    public ReportingService getReportingService() {
+        return reportingService;
     }
 }

@@ -53,9 +53,9 @@ TaskFlow deliberately chose **direct JDBC with raw SQL** (via `TaskRepositoryJdb
 
 ### Required Pattern 2 (Behavioral): Observer / Pub-Sub Pattern (`com.mohammadshoubash.taskflow.event`)
 * **Classes**: `EventBus`, `TaskEvent` (`TaskCreated`, `TaskCompleted`, `TaskOverdue`), `TaskEventListener`.
-* **Listeners**: `TaskLoggingListener`, `TaskReminderListener`, `TaskStatsListener`.
+* **Listeners**: `TaskLoggingListener` (audit logging), `TaskReminderListener` (reminder dispatch).
 * **Why it is used**:  
-  Completely decouples core task mutation workflows in `TaskService` from cross-cutting side effects. When tasks are created, completed, or marked overdue, `TaskService` simply publishes an immutable event to the `EventBus`. Multiple independent subscribers react asynchronously or synchronously without `TaskService` having any coupling or direct knowledge of logging, notification systems, or real-time metrics counters.
+  Completely decouples core task mutation workflows in `TaskService` from cross-cutting side effects. When tasks are created, completed, or marked overdue, `TaskService` simply publishes an immutable event to the `EventBus`. Multiple independent subscribers react without `TaskService` having any coupling or direct knowledge of console logging or notification delivery mechanisms.
 
 ### Bonus Pattern (+1 Architectural): Model-View-Controller (MVC) Pattern (`com.mohammadshoubash.taskflow.cli`)
 * **Classes**: `TaskFlowCli` (Controller), `TaskService`/`UserService`/Repositories (Model), Console Output (View).
@@ -64,13 +64,25 @@ TaskFlow deliberately chose **direct JDBC with raw SQL** (via `TaskRepositoryJdb
 
 ---
 
-## 4. Design Judgment Call: Task Rescheduling & Linked Reminders Lifecycle
+## 4. In-Memory Caching & Generic Abstractions (`com.mohammadshoubash.taskflow.cache`)
+
+TaskFlow fulfills the generic collections requirement by implementing a generic caching layer:
+* **Contract**: `Cache<K, V>` implemented by `InMemoryCache<K, V>`.
+* **Application**: `DueTodayCache` caches the computation of tasks due today (`Cache<LocalDate, List<Task>>`).
+* **Cache Lifecycle & Invalidation**:
+  * **Cache Miss**: Tasks are loaded from persistent storage via `taskRepository.findAll()`, filtered for today's deadline, and placed into `DueTodayCache`.
+  * **Cache Hit**: Subsequent lookups return the cached, unmodifiable list in $O(1)$ time with zero DB I/O.
+  * **Invalidation**: Any state mutation on tasks (`createTask`, `completeTask`, `checkOverdueTasks`, `updateTask`, `deleteTask`, `rescheduleTask`) proactively calls `dueTodayCache.invalidate()`, guaranteeing data consistency.
+
+---
+
+## 5. Design Judgment Call: Task Rescheduling & Linked Reminders Lifecycle
 
 When a task's due date is rescheduled via `Task.reschedule(newDueDate)` and `TaskService.rescheduleTask(taskId, newDueDate)`, an under-specified behavior in the domain is how linked, pending reminders should be handled. We considered three alternatives: leaving existing reminders untouched, shifting their trigger times by the calendar delta, or canceling and recreating them relative to the new date. Leaving reminders untouched causes alert fatigue and premature notifications for tasks that are no longer urgent, while shifting by delta risks preserving obsolete trigger intervals that may no longer make sense. We deliberately chose to invalidate and delete all pending, unsent reminders upon rescheduling, immediately scheduling a fresh reminder aligned with the updated deadline. Furthermore, if a task was previously marked `OVERDUE` and is rescheduled into the future, its status is automatically restored to `IN_PROGRESS` to maintain state consistency across the system.
 
 ---
 
-## 5. Custom Algorithm: Hand-Rolled Merge Sort (`com.mohammadshoubash.taskflow.algorithm.TaskSorter`)
+## 6. Custom Algorithm: Hand-Rolled Merge Sort (`com.mohammadshoubash.taskflow.algorithm.TaskSorter`)
 
 The Due Soon reporting feature strictly avoids `Collections.sort`, `Arrays.sort`, or `java.util.Comparator`. Instead, it features an independent, hand-rolled **Merge Sort**:
 * **Time Complexity**: Guaranteed $O(N \log N)$ in best, average, and worst cases.
@@ -79,7 +91,7 @@ The Due Soon reporting feature strictly avoids `Collections.sort`, `Arrays.sort`
 
 ---
 
-## 6. CLI Command Menu
+## 7. CLI Command Menu
 
 ```
 ========================================
@@ -87,14 +99,15 @@ The Due Soon reporting feature strictly avoids `Collections.sort`, `Arrays.sort`
 ========================================
 ---------------- Menu ------------------
 1. Add a Task
-2. List Tasks Due Soon
-3. List All Tasks
-4. Mark Task as Complete
-5. Check & Mark Overdue Tasks
-6. View Analytics & Reports
-7. Create a User
-8. List All Users
-9. Reschedule a Task
+2. List Tasks Due Soon (Merge Sort)
+3. List Tasks Due Today (In-Memory Cache)
+4. List All Tasks
+5. Mark Task as Complete
+6. Check & Mark Overdue Tasks
+7. View Analytics & Reports
+8. Create a User
+9. List All Users
+10. Reschedule a Task
 0. Exit
 ----------------------------------------
 ```

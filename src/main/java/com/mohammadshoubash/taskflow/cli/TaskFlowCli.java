@@ -61,13 +61,14 @@ public class TaskFlowCli {
             switch (choice) {
                 case "1" -> handleAddTask();
                 case "2" -> handleListDueSoon();
-                case "3" -> handleListAllTasks();
-                case "4" -> handleMarkTaskComplete();
-                case "5" -> handleCheckOverdueTasks();
-                case "6" -> handleViewAnalytics();
-                case "7" -> handleCreateUser();
-                case "8" -> handleListAllUsers();
-                case "9" -> handleRescheduleTask();
+                case "3" -> handleListDueToday();
+                case "4" -> handleListAllTasks();
+                case "5" -> handleMarkTaskComplete();
+                case "6" -> handleCheckOverdueTasks();
+                case "7" -> handleViewAnalytics();
+                case "8" -> handleCreateUser();
+                case "9" -> handleListAllUsers();
+                case "10" -> handleRescheduleTask();
                 case "0" -> {
                     out.println("Exiting TaskFlow. Goodbye!");
                     running = false;
@@ -81,14 +82,15 @@ public class TaskFlowCli {
     private void printMenu() {
         out.println("---------------- Menu ------------------");
         out.println("1. Add a Task");
-        out.println("2. List Tasks Due Soon");
-        out.println("3. List All Tasks");
-        out.println("4. Mark Task as Complete");
-        out.println("5. Check & Mark Overdue Tasks");
-        out.println("6. View Analytics & Reports");
-        out.println("7. Create a User");
-        out.println("8. List All Users");
-        out.println("9. Reschedule a Task");
+        out.println("2. List Tasks Due Soon (Merge Sort)");
+        out.println("3. List Tasks Due Today (In-Memory Cache)");
+        out.println("4. List All Tasks");
+        out.println("5. Mark Task as Complete");
+        out.println("6. Check & Mark Overdue Tasks");
+        out.println("7. View Analytics & Reports");
+        out.println("8. Create a User");
+        out.println("9. List All Users");
+        out.println("10. Reschedule a Task");
         out.println("0. Exit");
         out.println("----------------------------------------");
     }
@@ -149,13 +151,29 @@ public class TaskFlowCli {
     }
 
     private void handleListDueSoon() {
-        out.println("\n--- Tasks Due Soon (Sorted by Due Date) ---");
+        out.println("\n--- Tasks Due Soon (Sorted by Due Date via Merge Sort) ---");
         List<Task> dueSoon = taskService.getDueSoonReport();
         if (dueSoon.isEmpty()) {
             out.println("No tasks due in the next 7 days.");
         } else {
             dueSoon.forEach(t -> out.printf("#%d | %s | Due: %s | Priority: %s | Status: %s%n",
                     t.getId(), t.getTitle(), t.getDueDate(), t.getPriority(), t.getStatus()));
+        }
+    }
+
+    private void handleListDueToday() {
+        boolean wasCached = taskService.isDueTodayCached();
+        List<Task> dueToday = taskService.getTasksDueToday();
+        String cacheStatus = wasCached ? "[CACHE HIT]" : "[CACHE MISS - Loaded from DB & Cached]";
+        out.printf("%n--- Tasks Due Today %s ---%n", cacheStatus);
+        if (dueToday.isEmpty()) {
+            out.println("No tasks due today.");
+        } else {
+            dueToday.forEach(t -> {
+                String assignee = (t.getAssignedUser() != null) ? t.getAssignedUser().getName() : "Unassigned";
+                out.printf("#%d | %s | Due: %s | Priority: %s | Status: %s | Assigned: %s%n",
+                        t.getId(), t.getTitle(), t.getDueDate(), t.getPriority(), t.getStatus(), assignee);
+            });
         }
     }
 
@@ -180,12 +198,14 @@ public class TaskFlowCli {
             int taskId = Integer.parseInt(idStr);
             Optional<Task> completed = taskService.completeTask(taskId);
             if (completed.isPresent()) {
-                out.println("Task #" + taskId + " marked as DONE!");
+                out.println("Task #" + taskId + " marked as DONE.");
             } else {
                 out.println("Task with ID #" + taskId + " not found.");
             }
         } catch (NumberFormatException e) {
             out.println("Invalid task ID format.");
+        } catch (InvalidTaskStateException e) {
+            out.println("Error: " + e.getMessage());
         }
     }
 

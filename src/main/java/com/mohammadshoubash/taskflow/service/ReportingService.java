@@ -12,7 +12,46 @@ import com.mohammadshoubash.taskflow.domain.Task.Priority;
 import com.mohammadshoubash.taskflow.domain.Task.Status;
 import com.mohammadshoubash.taskflow.domain.User;
 
+import java.time.LocalDate;
+import java.util.Collections;
+import com.mohammadshoubash.taskflow.algorithm.TaskSorter;
+
 public class ReportingService {
+
+    private final TaskSorter taskSorter;
+
+    public ReportingService() {
+        this(new TaskSorter());
+    }
+
+    public ReportingService(TaskSorter taskSorter) {
+        this.taskSorter = (taskSorter != null) ? taskSorter : new TaskSorter();
+    }
+
+    /**
+     * Algorithmic Report: Tasks due soon sorted using hand-rolled Merge Sort.
+     */
+    public List<Task> getDueSoonReport(List<Task> allTasks, int daysAhead) {
+        if (allTasks == null) {
+            return Collections.emptyList();
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate cutoff = today.plusDays(daysAhead);
+
+        List<Task> dueSoon = allTasks.stream()
+                .filter(t -> t != null 
+                        && t.getDueDate() != null
+                        && !t.isCompleted()
+                        && !t.getDueDate().isBefore(today)
+                        && !t.getDueDate().isAfter(cutoff))
+                .collect(Collectors.toList());
+
+        return taskSorter.sortTasksByDueDate(dueSoon);
+    }
+
+    public List<Task> getDueSoonReport(List<Task> allTasks) {
+        return getDueSoonReport(allTasks, 7);
+    }
 
     /**
      * Aggregation 1: Tasks completed per user this week.
