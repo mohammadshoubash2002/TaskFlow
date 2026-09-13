@@ -16,6 +16,7 @@ import com.mohammadshoubash.taskflow.domain.Task.Priority;
 import com.mohammadshoubash.taskflow.domain.User;
 import com.mohammadshoubash.taskflow.exception.DuplicateUserException;
 import com.mohammadshoubash.taskflow.exception.InvalidEmailException;
+import com.mohammadshoubash.taskflow.exception.InvalidTaskStateException;
 import com.mohammadshoubash.taskflow.service.ReportingService;
 import com.mohammadshoubash.taskflow.service.TaskService;
 import com.mohammadshoubash.taskflow.service.UserService;
@@ -66,6 +67,7 @@ public class TaskFlowCli {
                 case "6" -> handleViewAnalytics();
                 case "7" -> handleCreateUser();
                 case "8" -> handleListAllUsers();
+                case "9" -> handleRescheduleTask();
                 case "0" -> {
                     out.println("Exiting TaskFlow. Goodbye!");
                     running = false;
@@ -86,6 +88,7 @@ public class TaskFlowCli {
         out.println("6. View Analytics & Reports");
         out.println("7. Create a User");
         out.println("8. List All Users");
+        out.println("9. Reschedule a Task");
         out.println("0. Exit");
         out.println("----------------------------------------");
     }
@@ -270,6 +273,41 @@ public class TaskFlowCli {
         } else {
             users.forEach(u -> out.printf("#%d | %s | Email: %s | Preferred: %s%n",
                     u.getId(), u.getName(), u.getEmail(), u.getPreferredChannel()));
+        }
+    }
+
+    private void handleRescheduleTask() {
+        out.print("Enter task ID to reschedule: ");
+        String idStr = scanner.nextLine().trim();
+        int taskId;
+        try {
+            taskId = Integer.parseInt(idStr);
+        } catch (NumberFormatException e) {
+            out.println("Invalid task ID format.");
+            return;
+        }
+
+        out.print("Enter new due date (YYYY-MM-DD): ");
+        String dateStr = scanner.nextLine().trim();
+        LocalDate newDueDate;
+        try {
+            newDueDate = LocalDate.parse(dateStr);
+        } catch (DateTimeParseException e) {
+            out.println("Invalid date format. Aborting reschedule.");
+            return;
+        }
+
+        try {
+            Optional<Task> rescheduled = taskService.rescheduleTask(taskId, newDueDate);
+            if (rescheduled.isPresent()) {
+                Task task = rescheduled.get();
+                out.printf("Task #%d rescheduled to %s. Status: %s. Previous pending reminders were reset.%n",
+                        task.getId(), task.getDueDate(), task.getStatus());
+            } else {
+                out.println("Task with ID #" + taskId + " not found.");
+            }
+        } catch (InvalidTaskStateException e) {
+            out.println("Error: " + e.getMessage());
         }
     }
 }

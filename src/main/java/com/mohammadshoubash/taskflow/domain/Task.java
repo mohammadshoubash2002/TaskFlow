@@ -2,6 +2,8 @@ package com.mohammadshoubash.taskflow.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.mohammadshoubash.taskflow.domain.Task.Priority;
 import com.mohammadshoubash.taskflow.exception.InvalidTaskStateException;
@@ -15,6 +17,7 @@ public class Task {
     private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<Reminder> reminders = new ArrayList<>();
     
     public enum Status {
         TODO,
@@ -201,6 +204,50 @@ public class Task {
 
     public void setCompletedAt(LocalDateTime completedAt) {
         this.completedAt = completedAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public List<Reminder> getReminders() {
+        return new ArrayList<>(reminders);
+    }
+
+    public void setReminders(List<Reminder> reminders) {
+        this.reminders = (reminders != null) ? new ArrayList<>(reminders) : new ArrayList<>();
+    }
+
+    public void addReminder(Reminder reminder) {
+        if (reminder != null) {
+            this.reminders.add(reminder);
+        }
+    }
+
+    /**
+     * Reschedules the task to a new due date.
+     * 
+     * Judgment Call:
+     * When a task's due date is rescheduled, all linked pending reminders are cleared.
+     * Trigger times calculated relative to the old due date are no longer meaningful and
+     * would produce premature or confusing notifications. Fresh reminders should be recreated
+     * relative to the new due date.
+     * If the task was previously marked OVERDUE and the new due date is in the future, its
+     * status is automatically reverted to IN_PROGRESS.
+     *
+     * @param newDueDate the new target completion date
+     * @throws IllegalArgumentException if newDueDate is null
+     * @throws InvalidTaskStateException if the task is already completed (DONE)
+     */
+    public void reschedule(LocalDate newDueDate) {
+        if (newDueDate == null) {
+            throw new IllegalArgumentException("New due date cannot be null");
+        }
+        if (this.status == Status.DONE) {
+            throw new InvalidTaskStateException(this.id, this.status.toString(), "RESCHEDULE");
+        }
+        this.dueDate = newDueDate;
+        this.reminders.clear(); // Judgment call: old reminder trigger times are invalidated
+        if (this.status == Status.OVERDUE && !isOverdue()) {
+            this.status = Status.IN_PROGRESS;
+        }
         this.updatedAt = LocalDateTime.now();
     }
 
