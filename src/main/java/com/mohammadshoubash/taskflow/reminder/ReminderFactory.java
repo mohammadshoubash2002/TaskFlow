@@ -14,6 +14,7 @@ public class ReminderFactory {
         return switch (channel) {
             case EMAIL -> new EmailDelivery();
             case SMS -> new SmsDelivery();
+            default -> new EmailDelivery();
         };
     }
 
@@ -24,6 +25,7 @@ public class ReminderFactory {
         return switch (priority) {
             case HIGH -> DeliveryChannel.SMS;
             case MEDIUM, LOW -> DeliveryChannel.EMAIL;
+            default -> DeliveryChannel.EMAIL;
         };
     }
 }
