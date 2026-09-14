@@ -29,19 +29,7 @@ Upon startup, an embedded H2 web server is launched automatically:
 * **User**: `sa`
 * **Password**: *(leave blank)*
 
----
-
-## 2. Persistence Architecture: JDBC vs. JPA Justification
-
-TaskFlow uses **direct JDBC with raw SQL** instead of an ORM (JPA/Hibernate) for three key reasons:
-
-1. **Performance & Predictability**: Eliminates heavy ORM caching, reflection proxies, and hidden SQL, ensuring fast startup and deterministic query execution.
-2. **No ORM Hazards**: Prevents common pitfalls like the N+1 query problem, lazy initialization errors, and unexpected cascading side-effects.
-3. **Clean Architecture & Control**: Generic repository interfaces (`Repository<T, ID>`) decouple business logic from the database while maintaining full control over SQL and connection safety via `try-with-resources`.
-
----
-
-## 3. Design Patterns: 2 Required + 1 Bonus
+## 2. Design Patterns: 2 Required + 1 Bonus
 
 ### Required Pattern 1 (Creational): Factory Pattern (`com.mohammadshoubash.taskflow.reminder`)
 * **Classes**: `ReminderFactory`, `DeliveryMechanism`, `EmailDelivery`, `SmsDelivery`, `PushDelivery`.
@@ -61,7 +49,7 @@ TaskFlow uses **direct JDBC with raw SQL** instead of an ORM (JPA/Hibernate) for
 
 ---
 
-## 4. In-Memory Caching & Generic Abstractions (`com.mohammadshoubash.taskflow.cache`)
+## 3. In-Memory Caching & Generic Abstractions (`com.mohammadshoubash.taskflow.cache`)
 
 TaskFlow fulfills the generic collections requirement by implementing a generic caching layer:
 * **Contract**: `Cache<K, V>` implemented by `InMemoryCache<K, V>`.
@@ -73,13 +61,17 @@ TaskFlow fulfills the generic collections requirement by implementing a generic 
 
 ---
 
-## 5. Design Judgment Call: Task Rescheduling & Linked Reminders Lifecycle
+## 4. Design Judgment Call: Task Rescheduling & Linked Reminders Lifecycle
 
-When a task's due date is rescheduled via `Task.reschedule(newDueDate)` and `TaskService.rescheduleTask(taskId, newDueDate)`, an under-specified behavior in the domain is how linked, pending reminders should be handled. We considered three alternatives: leaving existing reminders untouched, shifting their trigger times by the calendar delta, or canceling and recreating them relative to the new date. Leaving reminders untouched causes alert fatigue and premature notifications for tasks that are no longer urgent, while shifting by delta risks preserving obsolete trigger intervals that may no longer make sense. We deliberately chose to invalidate and delete all pending, unsent reminders upon rescheduling, immediately scheduling a fresh reminder aligned with the updated deadline. Furthermore, if a task was previously marked `OVERDUE` and is rescheduled into the future, its status is automatically restored to `IN_PROGRESS` to maintain state consistency across the system.
+When a task's due date is rescheduled via `Task.reschedule(newDueDate)` and `TaskService.rescheduleTask(taskId, newDueDate)`, the system addresses the under-specified domain behavior of how linked reminders and task state should behave:
+
+* **Clearing Obsolete Reminders**: All pending, unsent reminders tied to the old deadline are automatically invalidated and deleted.
+* **Creating Fresh Reminders**: A clean, new reminder is scheduled relative to the updated deadline.
+* **State Consistency (`OVERDUE` $\to$ `IN_PROGRESS`)**: If a task was previously marked as `OVERDUE` and is successfully rescheduled to a future date, its status is automatically restored to `IN_PROGRESS`, maintaining logical consistency across the domain model.
 
 ---
 
-## 6. Custom Algorithm: Hand-Rolled Merge Sort (`com.mohammadshoubash.taskflow.algorithm.TaskSorter`)
+## 5. Custom Algorithm: Hand-Rolled Merge Sort (`com.mohammadshoubash.taskflow.algorithm.TaskSorter`)
 
 The Due Soon reporting feature strictly avoids `Collections.sort`, `Arrays.sort`, or `java.util.Comparator`. Instead, it features an independent, hand-rolled **Merge Sort**:
 * **Time Complexity**: Guaranteed $O(N \log N)$ in best, average, and worst cases.
@@ -88,7 +80,7 @@ The Due Soon reporting feature strictly avoids `Collections.sort`, `Arrays.sort`
 
 ---
 
-## 7. CLI Command Menu
+## 6. CLI Command Menu
 
 ```
 ========================================
