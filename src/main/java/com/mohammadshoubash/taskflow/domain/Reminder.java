@@ -2,7 +2,6 @@ package com.mohammadshoubash.taskflow.domain;
 
 import java.time.LocalDateTime;
 
-import com.mohammadshoubash.taskflow.domain.Reminder.DeliveryChannel;
 
 public class Reminder {
     private int id;

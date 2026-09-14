@@ -42,8 +42,4 @@ public class TaskReminderListener implements TaskEventListener {
             delivery.send(reminder);
         }
     }
-
-    public ReminderFactory getReminderFactory() {
-        return reminderFactory;
-    }
 }

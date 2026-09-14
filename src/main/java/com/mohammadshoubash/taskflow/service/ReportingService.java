@@ -49,10 +49,6 @@ public class ReportingService {
         return taskSorter.sortTasksByDueDate(dueSoon);
     }
 
-    public List<Task> getDueSoonReport(List<Task> allTasks) {
-        return getDueSoonReport(allTasks, 7);
-    }
-
     /**
      * Aggregation 1: Tasks completed per user this week.
      * Groups by task owner (assignedUser), filtering tasks completed within the last 7 days.

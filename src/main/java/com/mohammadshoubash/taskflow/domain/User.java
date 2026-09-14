@@ -1,9 +1,6 @@
 package com.mohammadshoubash.taskflow.domain;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import com.mohammadshoubash.taskflow.domain.Reminder.DeliveryChannel;
 import com.mohammadshoubash.taskflow.exception.InvalidEmailException;
@@ -14,7 +11,6 @@ public class User {
     private String name;
     private String email;
     private DeliveryChannel preferredChannel;
-    private List<Task> tasks;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -38,19 +34,8 @@ public class User {
         this.name = name;
         this.email = email;
         this.preferredChannel = preferredChannel;
-        this.tasks = new ArrayList<>();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-    }
-
-    public void addTask(Task task) {
-        this.tasks.add(task);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public void removeTask(Task task) {
-        this.tasks.remove(task);
-        this.updatedAt = LocalDateTime.now();
     }
 
     public int getId() {
@@ -75,16 +60,6 @@ public class User {
             throw new InvalidEmailException(email);
         }
         this.email = email;
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public List<Task> getTasks() {
-        // i use this to prevent callers from modify the tasks list directly
-        return Collections.unmodifiableList(tasks);
-    }
-
-    public void setTasks(List<Task> tasks) {
-        this.tasks = (tasks != null) ? new ArrayList<>(tasks) : new ArrayList<>();
         this.updatedAt = LocalDateTime.now();
     }
 
