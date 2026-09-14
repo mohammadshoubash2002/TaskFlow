@@ -33,14 +33,11 @@ Upon startup, an embedded H2 web server is launched automatically:
 
 ## 2. Persistence Architecture: JDBC vs. JPA Justification
 
-TaskFlow deliberately chose **direct JDBC with raw SQL** (via `TaskRepositoryJdbc`, `UserRepositoryJdbc`, `ReminderRepositoryJdbc`) instead of an ORM like JPA/Hibernate for the following reasons:
+TaskFlow uses **direct JDBC with raw SQL** instead of an ORM (JPA/Hibernate) for three key reasons:
 
-1. **Zero Runtime Overhead & Deterministic Execution**:  
-   JPA/Hibernate introduces heavy entity state management (`transient`, `managed`, `detached`), first/second-level caches, reflection proxies, and hidden SQL generation. Direct JDBC guarantees exact, predictable query execution with negligible memory footprint and sub-second startup times.
-2. **Elimination of Common ORM Hazards**:  
-   ORM frameworks frequently introduce the notorious **N+1 select query problem**, subtle lazy initialization exceptions outside active persistence contexts, and cascade side-effects. With JDBC, every query is explicitly authored, optimized, and controlled.
-3. **Architectural Purity & Portability**:  
-   By abstracting data access behind generic interface contracts (`Repository<T, ID>`, `TaskRepository`, `UserRepository`), the domain and service layers stay completely decoupled from database internals. Connection safety and resource leak prevention are enforced cleanly using Java's `try-with-resources`.
+1. **Performance & Predictability**: Eliminates heavy ORM caching, reflection proxies, and hidden SQL, ensuring fast startup and deterministic query execution.
+2. **No ORM Hazards**: Prevents common pitfalls like the N+1 query problem, lazy initialization errors, and unexpected cascading side-effects.
+3. **Clean Architecture & Control**: Generic repository interfaces (`Repository<T, ID>`) decouple business logic from the database while maintaining full control over SQL and connection safety via `try-with-resources`.
 
 ---
 
